@@ -8,14 +8,29 @@ require 'uri'
 schemeApps = File.expand_path('../schemeApps.json', __FILE__)
 schemeApps2 = File.expand_path('../schemeApps2.json', __FILE__)
 
-if ARGV.size
+scheme = JSON.parse(IO.read(schemeApps))
+new_scheme = JSON.parse(IO.read(schemeApps2))
+
+if ARGV.size > 0
 	case ARGV.shift
 	when "update"
 		`curl -o #{schemeApps} "https://ihasapp.herokuapp.com/api/schemeApps.json"`
+		exit 0
+	when "build"
+		p "build..."
+		add_scheme = []
+		scheme.each {|sch, appids|
+			if new_scheme.find {|x| x[0] == sch} == nil
+				add_scheme.add([sch, appids])
+			end
+		}
+		if add_scheme.size > 0
+			new_scheme.concat(add_scheme)
+			p "Concat #{add_scheme.size} new"
+		end
 	else
-		p "Usage: #{File.basename(__FILE__)} {update}"
+		p "Usage: #{File.basename(__FILE__)} {update|build}"
 	end
-	exit 0
 end
 
 def FetchId(appid)
@@ -37,53 +52,23 @@ rescue
 ensure
 	return name
 end
-
-scheme = JSON.parse(IO.read(schemeApps))
-new_scheme = JSON.parse(IO.read(schemeApps2))
-
-if new_scheme
-	add_scheme = []
-	new_scheme.each {|item|
-		sch = item[0]
-		if not scheme.has_key?(sch)
-			add_scheme.push([sch, scheme[sch]])
-		end
-	}
-	if add_scheme.size > 0
-		new_scheme.concat(add_scheme)
-		p "Concat #{add_scheme.size} new"
-	end
-
-	new_scheme.shuffle!
-	new_scheme.collect! {|item|
-		if item.size < 3
-			p "Process #{item[0]}..."
-			item[1].each{|appid|
-				name = FetchId(appid)
-				if name != nil
-					item.push(name)
-					break
-				end
-			}
-		end
-		item = item
-	}
-else
-	scheme.shuffle!
-	scheme.each {|sch, appids|
-		item = [sch, appids]
-		p "Process #{item[0]}.."
-		appids.each {|appid|
+# 随机打乱，防止被屏蔽
+new_scheme.shuffle!
+new_scheme.collect! {|item|
+	if item.size == 2 and item[1] != nil
+		p "Process #{item[0]} #{item[1]}..."
+		item[1].each{|appid|
 			name = FetchId(appid)
 			if name != nil
 				item.push(name)
 				break
 			end
 		}
-		new_scheme.push(item)
-	}
-end
+	end
+	item = item
+}
 
+new_scheme.sort! {|a, b| a[0] <=> b[0]}
 # save my own
 f = File.new(schemeApps2, "w+")
 JSON.dump(new_scheme, f)
