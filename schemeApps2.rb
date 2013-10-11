@@ -70,8 +70,7 @@ new_scheme.collect! {|item|
 
 new_scheme.sort! {|a, b| a[0] <=> b[0]}
 # save my own
-f = File.new(schemeApps2, "w+")
-JSON.dump(new_scheme, f)
+File.new(schemeApps2, "w+") { |f| f.write(JSON.pretty_generate(new_scheme)) }
 totoal = new_scheme.size
 success = new_scheme.count {|x| x.size > 2}
 p "Total #{totoal}, successd #{success}"
