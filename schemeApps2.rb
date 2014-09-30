@@ -5,11 +5,18 @@ require "json"
 require 'net/http'
 require 'uri'
 
+module JSON
+  def self.parse_nil(json)
+    JSON.parse(json) if json && json.length >= 2
+  end
+end
+
 schemeApps = File.expand_path('../schemeApps.json', __FILE__)
 schemeApps2 = File.expand_path('../schemeApps2.json', __FILE__)
 
-scheme = JSON.parse(IO.read(schemeApps))
-new_scheme = JSON.parse(IO.read(schemeApps2))
+scheme = JSON.parse_nil(IO.read(schemeApps))
+new_scheme = JSON.parse_nil(IO.read(schemeApps2))
+new_scheme = new_scheme ? new_scheme : []
 
 if ARGV.size > 0
 	case ARGV.shift
@@ -17,11 +24,12 @@ if ARGV.size > 0
 		`curl -o #{schemeApps} "https://ihasapp.herokuapp.com/api/schemeApps.json"`
 		exit 0
 	when "build"
+		raise "error in json, please update" unless scheme
 		p "build..."
 		add_scheme = []
 		scheme.each {|sch, appids|
 			if new_scheme.find {|x| x[0] == sch} == nil
-				add_scheme.add([sch, appids])
+				add_scheme.push([sch, appids])
 			end
 		}
 		if add_scheme.size > 0
@@ -70,7 +78,7 @@ new_scheme.collect! {|item|
 
 new_scheme.sort! {|a, b| a[0] <=> b[0]}
 # save my own
-File.new(schemeApps2, "w+") { |f| f.write(JSON.pretty_generate(new_scheme)) }
+File.open(schemeApps2, "w+") { |f| f.write(JSON.pretty_generate(new_scheme)) }
 totoal = new_scheme.size
 success = new_scheme.count {|x| x.size > 2}
 p "Total #{totoal}, successd #{success}"
